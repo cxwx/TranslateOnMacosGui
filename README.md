@@ -49,6 +49,14 @@ Apple 的 [highFidelity 策略文档](https://developer.apple.com/documentation/
 
 推送到 `main` 后，GitHub Actions 会在 macOS arm64 运行器上运行测试、构建应用，并提供 14 天有效的安装包构建产物。推送 `v*` 格式的版本标签（例如 `v0.1.0`）后，Actions 会按标签版本构建，并自动创建 GitHub Release，附上 `.app.zip` 和 SHA-256 校验文件。公开下载包使用临时签名，首次打开时 macOS 可能会显示安全确认；正式 Developer ID 签名与公证尚未配置。
 
+如果你的 macOS 没有启用 Gatekeeper，可以直接打开应用。如果系统仍因下载隔离标记阻止启动，可在解压后运行以下命令移除应用的 quarantine 属性：
+
+~~~sh
+xattr -dr com.apple.quarantine /Applications/PageTranslate.app
+~~~
+
+如果应用没有放在“应用程序”文件夹中，请将命令里的路径换成 `PageTranslate.app` 的实际位置。
+
 ### 从源码构建
 
 ~~~sh
@@ -118,4 +126,4 @@ PDF、图片和识别出的文字由应用在本机读取与处理。Apple 文�
 
 ## 许可证
 
-当前仓库尚未添加开源许可证文件。许可证确定前，项目源码暂不授予复制、修改或再分发的许可。
+本项目采用 [MIT License](LICENSE) 开源许可。
