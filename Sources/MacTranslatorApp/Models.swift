@@ -4,8 +4,15 @@ import CoreGraphics
 enum Workspace: String, CaseIterable, Identifiable {
     case image = "图片翻译"
     case comic = "漫画翻译"
+    case pdf = "论文 PDF"
     var id: Self { self }
-    var symbol: String { self == .image ? "photo" : "books.vertical" }
+    var symbol: String {
+        switch self {
+        case .image: return "photo"
+        case .comic: return "books.vertical"
+        case .pdf: return "doc.richtext"
+        }
+    }
 }
 
 enum PreviewMode: String, CaseIterable, Identifiable {
@@ -28,6 +35,7 @@ struct LanguageOption: Identifiable, Sendable {
 struct TextBlock: Sendable {
     let text: String
     let box: CGRect
+    var pdfLineBoxes: [CGRect] = []
 }
 
 struct Page: Identifiable, Sendable {
@@ -43,11 +51,18 @@ struct Document: Sendable {
     /// Extracted archives belong to this temporary directory; imported files never do.
     let temporaryRoot: URL?
     let contentRoot: URL?
+    let pdfPages: [PDFPageInfo]
+}
+
+struct PDFPageInfo: Sendable {
+    let size: CGSize
+    let lines: [TextBlock]
 }
 
 struct RecognizedPage: Sendable {
     let page: Page
     let blocks: [TextBlock]
+    var protectedBoxes: [CGRect] = []
 }
 
 struct RenderedDocument: Sendable {

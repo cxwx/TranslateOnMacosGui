@@ -42,6 +42,10 @@ final class AppModel: ObservableObject {
     var textCount: Int { recognized.reduce(0) { $0 + $1.blocks.count } }
     var uniqueCount: Int { Set(recognized.flatMap { $0.blocks.map(\.text) }).count }
     var pageCount: Int { document?.pages.count ?? 0 }
+    var translatedPDFPage: URL? {
+        guard workspace == .pdf, let pages = result?.pages, pages.indices.contains(selectedPage) else { return nil }
+        return pages[selectedPage]
+    }
 
     func changeWorkspace(_ workspace: Workspace) {
         guard !busy, self.workspace != workspace else { return }
@@ -55,10 +59,17 @@ final class AppModel: ObservableObject {
         panel.canChooseDirectories = workspace == .comic
         panel.canChooseFiles = true
         panel.allowsMultipleSelection = false
-        panel.message = workspace == .image ? "选择需要翻译的图片" : "选择 CBZ、ZIP 或漫画图片文件夹"
-        panel.allowedContentTypes = workspace == .image
-            ? [.image]
-            : [.zip, UTType(filenameExtension: "cbz") ?? .data]
+        switch workspace {
+        case .image:
+            panel.message = "选择需要翻译的图片"
+            panel.allowedContentTypes = [.image]
+        case .comic:
+            panel.message = "选择 CBZ、ZIP 或漫画图片文件夹"
+            panel.allowedContentTypes = [.zip, UTType(filenameExtension: "cbz") ?? .data]
+        case .pdf:
+            panel.message = "选择需要翻译的论文 PDF"
+            panel.allowedContentTypes = [.pdf]
+        }
         panel.begin { [weak self] response in
             if response == .OK, let url = panel.url { self?.load(url) }
         }
@@ -70,7 +81,8 @@ final class AppModel: ObservableObject {
         let hasAccess = url.startAccessingSecurityScopedResource()
         accessURL = url
         securityScope = hasAccess
-        if ["cbz", "zip"].contains(url.pathExtension.lowercased()) || (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+        if url.pathExtension.lowercased() == "pdf" { workspace = .pdf }
+        else if ["cbz", "zip"].contains(url.pathExtension.lowercased()) || (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
             workspace = .comic
         } else { workspace = .image }
         let mode = workspace
@@ -123,14 +135,19 @@ final class AppModel: ObservableObject {
                     pages = try await parallelMap(document.pages, limit: ImageEngine.workers, progress: { count in
                         await report(ProgressUpdate(fraction: Double(count) / Double(document.pages.count) * 0.4,
                                                     message: "识别文字 · \(count) / \(document.pages.count) 页"))
-                    }) { page in try ImageEngine.recognize(page, source: source, fast: fast) }
+                    }) { page in
+                        if document.workspace == .pdf {
+                            return try PDFEngine.recognize(page, info: document.pdfPages[page.id], source: source, fast: fast)
+                        }
+                        return try ImageEngine.recognize(page, source: source, fast: fast)
+                    }
                 }
                 try Task.checkCancellation()
                 recognized = pages
                 settingsKey = key
                 let texts = pages.flatMap { $0.blocks.map(\.text) }
                 if texts.isEmpty {
-                    status = "未识别到文字；请切换精确模式或检查图片清晰度。"
+                    status = document.workspace == .pdf ? "未找到可翻译的正文。" : "未识别到文字；请切换精确模式或检查图片清晰度。"
                     progress = 1
                     finish()
                     return
@@ -194,7 +211,7 @@ final class AppModel: ObservableObject {
         guard let document, document.pages.indices.contains(selectedPage) else { return }
         let index = selectedPage
         let original = document.pages[index].url
-        let translated = result?.pages[index]
+        let translated = document.workspace == .pdf ? nil : result?.pages[index]
         originalPreview = nil
         translatedPreview = nil
         previewLoading = true

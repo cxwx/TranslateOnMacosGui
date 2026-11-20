@@ -8,6 +8,7 @@ xcrun swiftc -swift-version 6 -parse-as-library \
     Sources/MacTranslatorApp/Models.swift \
     Sources/MacTranslatorApp/ImageEngine.swift \
     Sources/MacTranslatorApp/RenderCanvas.swift \
+    Sources/MacTranslatorApp/PDFEngine.swift \
     Sources/MacTranslatorApp/DocumentEngine.swift \
     Sources/MacTranslatorApp/TranslationEngine.swift \
     Tests/EngineTests.swift -o .build/EngineTests

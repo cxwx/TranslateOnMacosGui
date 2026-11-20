@@ -20,7 +20,7 @@ enum ImageEngine {
         return image
     }
 
-    static func recognize(_ page: Page, source: String, fast: Bool) throws -> RecognizedPage {
+    static func recognize(_ page: Page, source: String, fast: Bool, mergeLines: Bool = true) throws -> RecognizedPage {
         try autoreleasepool {
             try Task.checkCancellation()
             let cg = try image(page.url)
@@ -47,7 +47,7 @@ enum ImageEngine {
                 guard let text = result.topCandidates(1).first?.string.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
                 return TextBlock(text: text, box: result.boundingBox)
             }
-            return RecognizedPage(page: page, blocks: merge(lines))
+            return RecognizedPage(page: page, blocks: mergeLines ? merge(lines) : lines)
         }
     }
 

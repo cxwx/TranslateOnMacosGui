@@ -33,6 +33,27 @@ final class RenderCanvas {
         func median(_ key: ( (Double, Double, Double)) -> Double) -> Double { values.map(key).sorted()[values.count / 2] }
         return (median { $0.0 }, median { $0.1 }, median { $0.2 })
     }
+
+    /// Check the space the new text would occupy outside the original lines.
+    func hasPaperBackground(in rect: CGRect, excluding lines: [CGRect]) -> Bool {
+        guard !rect.isNull, !rect.isEmpty else { return false }
+        for line in lines {
+            let (r, g, b) = background(around: line)
+            if min(r, g, b) < 234 { return false }
+        }
+        var samples = 0
+        var ink = 0
+        let step = max(2, min(10, Int(rect.height / 10)))
+        for y in stride(from: Int(rect.minY), to: Int(rect.maxY), by: step) {
+            for x in stride(from: Int(rect.minX), to: Int(rect.maxX), by: step) {
+                if lines.contains(where: { $0.contains(CGPoint(x: x, y: y)) }) { continue }
+                let (r, g, b) = rgb(x, y)
+                samples += 1
+                if min(r, g, b) < 224 { ink += 1 }
+            }
+        }
+        return ink <= samples / 20
+    }
     func foreground(in rect: CGRect, background: (Double, Double, Double)) -> (Double, Double, Double) {
         var picks: [(Double, Double, Double)] = []; let step = max(1, Int(rect.height / 10))
         for y in stride(from: Int(rect.minY), through: Int(rect.maxY), by: step) {

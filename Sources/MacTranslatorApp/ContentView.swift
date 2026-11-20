@@ -1,4 +1,5 @@
 import SwiftUI
+import PDFKit
 import UniformTypeIdentifiers
 
 private let accent = Color(red: 0.19, green: 0.43, blue: 0.38)
@@ -58,7 +59,7 @@ struct ContentView: View {
                             Button { model.selectPage(page.id) } label: {
                                 HStack(spacing: 8) {
                                     Text(String(format: "%02d", page.id + 1)).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary)
-                                    Text(page.url.lastPathComponent).font(.caption).lineLimit(1).truncationMode(.middle)
+                                    Text(model.workspace == .pdf ? "论文页面" : page.url.lastPathComponent).font(.caption).lineLimit(1).truncationMode(.middle)
                                     Spacer(minLength: 0)
                                     if model.result != nil { Image(systemName: "checkmark.circle.fill").foregroundStyle(accent).font(.caption) }
                                 }.padding(9).background(model.selectedPage == page.id ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 6))
@@ -97,16 +98,16 @@ struct ContentView: View {
                     RoundedRectangle(cornerRadius: 18).fill(Color(nsColor: .controlBackgroundColor)).frame(width: 112, height: 130)
                         .shadow(color: .black.opacity(0.06), radius: 15, y: 6)
                     VStack(spacing: 12) {
-                        Image(systemName: model.workspace == .image ? "photo" : "book.pages").font(.system(size: 32, weight: .light)).foregroundStyle(accent)
+                        Image(systemName: model.workspace == .image ? "photo" : (model.workspace == .comic ? "book.pages" : "doc.richtext")).font(.system(size: 32, weight: .light)).foregroundStyle(accent)
                         HStack(spacing: 6) { Text("A"); Image(systemName: "arrow.right").font(.caption2); Text("译") }.font(.system(size: 15, weight: .medium)).foregroundStyle(.secondary)
                     }
                 }.padding(.bottom, 32)
-                Text(model.workspace == .image ? "拖入一张图片" : "拖入一本漫画").font(.system(size: 23, weight: .medium))
-                Text(model.workspace == .image ? "识别、翻译、排版，在你的 Mac 上完成" : "整本识别 · 重复文本只翻译一次 · 按页预览")
+                Text(emptyTitle).font(.system(size: 23, weight: .medium))
+                Text(emptySubtitle)
                     .font(.subheadline).foregroundStyle(.secondary).padding(.top, 10)
                 Button { model.open() } label: { Label("选择文件", systemImage: "folder").padding(.horizontal, 13).padding(.vertical, 5) }
                     .buttonStyle(.borderedProminent).padding(.top, 26).disabled(model.busy)
-                Text(model.workspace == .image ? "PNG · JPEG · HEIC · WebP · 更多图片格式" : "CBZ · ZIP · 图片文件夹")
+                Text(emptyFormats)
                     .font(.caption).foregroundStyle(.tertiary).padding(.top, 17)
                 Spacer()
                 HStack(spacing: 24) {
@@ -120,20 +121,55 @@ struct ContentView: View {
         }
     }
 
+    private var emptyTitle: String {
+        switch model.workspace {
+        case .image: return "拖入一张图片"
+        case .comic: return "拖入一本漫画"
+        case .pdf: return "拖入一篇论文 PDF"
+        }
+    }
+
+    private var emptySubtitle: String {
+        switch model.workspace {
+        case .image: return "识别、翻译、排版，在你的 Mac 上完成"
+        case .comic: return "整本识别 · 重复文本只翻译一次 · 按页预览"
+        case .pdf: return "保留原文页面 · 翻译正文 · 导出译文 PDF"
+        }
+    }
+
+    private var emptyFormats: String {
+        switch model.workspace {
+        case .image: return "PNG · JPEG · HEIC · WebP · 更多图片格式"
+        case .comic: return "CBZ · ZIP · 图片文件夹"
+        case .pdf: return "PDF · 可搜索文本或扫描版"
+        }
+    }
+
     private var workspace: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
                 HStack {
                     Picker("预览", selection: $model.previewMode) {
-                        ForEach(PreviewMode.allCases) { Text($0.rawValue).tag($0) }
+                        ForEach(PreviewMode.allCases) { mode in
+                            Text(previewTitle(mode)).tag(mode)
+                        }
                     }.pickerStyle(.segmented).frame(width: 210).disabled(model.result == nil)
                     Spacer()
                     Button { model.showText.toggle() } label: { Image(systemName: "text.alignleft") }.help("显示识别文字和译文")
                         .disabled(model.textCount == 0)
                 }.padding(16)
                 HStack(spacing: 14) {
-                    if model.previewMode != .translated { imagePreview(model.originalPreview, label: "原图") }
-                    if model.previewMode != .original { imagePreview(model.translatedPreview, label: "译图") }
+                    if model.previewMode != .translated { imagePreview(model.originalPreview, label: previewTitle(.original)) }
+                    if model.previewMode != .original {
+                        if let url = model.translatedPDFPage {
+                            VStack(spacing: 8) {
+                                Text("译文").font(.caption).foregroundStyle(.secondary).padding(.top, 12)
+                                TranslatedPDFView(url: url).id(url)
+                            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if model.workspace != .pdf {
+                            imagePreview(model.translatedPreview, label: "译图")
+                        }
+                    }
                 }.padding(.horizontal, 20).padding(.bottom, 16).frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.primary.opacity(0.025))
                 if model.showText {
@@ -157,6 +193,15 @@ struct ContentView: View {
             }.frame(maxWidth: .infinity)
             Divider()
             settings
+        }
+    }
+
+    private func previewTitle(_ mode: PreviewMode) -> String {
+        guard model.workspace == .pdf else { return mode.rawValue }
+        switch mode {
+        case .original: return "原文"
+        case .translated: return "译文"
+        case .compare: return "对照"
         }
     }
 
@@ -190,12 +235,12 @@ struct ContentView: View {
             }
             Divider()
             VStack(alignment: .leading, spacing: 9) {
-                Text("文字识别").font(.caption).foregroundStyle(.secondary)
+                Text(model.workspace == .pdf ? "扫描页识别" : "文字识别").font(.caption).foregroundStyle(.secondary)
                 Picker("文字识别", selection: $model.fast) {
                     Text("精确").tag(false)
                     Text("快速").tag(true)
                 }.pickerStyle(.segmented)
-                Text("精确模式适合漫画与小字。快速模式适合清晰英文；不支持的语言自动使用精确识别。")
+                Text(model.workspace == .pdf ? "优先读取 PDF 的文字层。扫描页建议使用精确识别。" : "精确模式适合漫画与小字。快速模式适合清晰英文；不支持的语言自动使用精确识别。")
                     .font(.caption).foregroundStyle(.secondary).lineSpacing(3)
             }
             Divider()
@@ -209,8 +254,8 @@ struct ContentView: View {
             }
             Spacer()
             VStack(alignment: .leading, spacing: 8) {
-                Label("关于图片排版", systemImage: "info.circle").font(.caption)
-                Text("使用周围底色覆盖原文，适合纯色对白框。复杂背景、竖排与艺术字建议导出前检查。")
+                Label(model.workspace == .pdf ? "关于论文排版" : "关于图片排版", systemImage: "info.circle").font(.caption)
+                Text(model.workspace == .pdf ? "译文尽量排在原位置。放不下的段落会放到续页，在译文预览中向下滚动即可查看。" : "使用周围底色覆盖原文，适合纯色对白框。复杂背景、竖排与艺术字建议导出前检查。")
                     .font(.caption).foregroundStyle(.secondary).lineSpacing(3)
             }
         }.font(.subheadline).padding(22).frame(width: 254).disabled(model.busy)
@@ -248,4 +293,19 @@ struct ContentView: View {
         }
         return true
     }
+}
+
+private struct TranslatedPDFView: NSViewRepresentable {
+    let url: URL
+
+    func makeNSView(context: Context) -> PDFView {
+        let view = PDFView()
+        view.displayMode = .singlePageContinuous
+        view.backgroundColor = .windowBackgroundColor
+        view.document = PDFDocument(url: url)
+        view.autoScales = true
+        return view
+    }
+
+    func updateNSView(_ view: PDFView, context: Context) {}
 }

@@ -14,7 +14,7 @@ struct MacTranslatorApp: App {
         .defaultSize(width: 1280, height: 820)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("打开图片或漫画…") { model.open() }.keyboardShortcut("o").disabled(model.busy)
+                Button("打开文件…") { model.open() }.keyboardShortcut("o").disabled(model.busy)
             }
             CommandGroup(after: .saveItem) {
                 Button("导出翻译结果…") { model.export() }.keyboardShortcut("s", modifiers: [.command, .shift])

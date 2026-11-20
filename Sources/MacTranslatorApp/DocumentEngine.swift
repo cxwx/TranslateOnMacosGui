@@ -1,4 +1,5 @@
 import Foundation
+import PDFKit
 
 enum DocumentEngine {
     static func run(_ executable: String, _ arguments: [String], directory: URL? = nil) throws -> String {
@@ -35,16 +36,40 @@ enum DocumentEngine {
     static func load(_ url: URL, workspace: Workspace) throws -> Document {
         let fm = FileManager.default
         let values = try url.resourceValues(forKeys: [.isDirectoryKey])
+        if workspace == .pdf {
+            guard values.isDirectory != true, url.pathExtension.lowercased() == "pdf" else {
+                throw AppFailure("请选择有效的 PDF 文件。")
+            }
+            let pdf = try PDFEngine.read(url)
+            let root = fm.temporaryDirectory.appendingPathComponent("PageTranslate-pdf-" + UUID().uuidString)
+            try fm.createDirectory(at: root, withIntermediateDirectories: true)
+            do {
+                var pages: [Page] = []
+                var pdfPages: [PDFPageInfo] = []
+                for index in 0..<pdf.pageCount {
+                    try Task.checkCancellation()
+                    guard let page = pdf.page(at: index) else { throw AppFailure("无法读取 PDF 页面。") }
+                    let name = String(format: "%05d-page.png", index + 1)
+                    let output = root.appendingPathComponent(name)
+                    pdfPages.append(try autoreleasepool { try PDFEngine.importPage(page, to: output) })
+                    pages.append(Page(id: index, url: output, relativePath: name))
+                }
+                return Document(input: url, pages: pages, workspace: workspace, temporaryRoot: root, contentRoot: root, pdfPages: pdfPages)
+            } catch {
+                try? fm.removeItem(at: root)
+                throw error
+            }
+        }
         if workspace == .image {
             guard ImageEngine.extensions.contains(url.pathExtension.lowercased()), values.isDirectory != true else {
                 throw AppFailure("请选择 PNG、JPEG、HEIC、WebP 等图片。")
             }
             return Document(input: url, pages: [Page(id: 0, url: url, relativePath: url.lastPathComponent)],
-                            workspace: workspace, temporaryRoot: nil, contentRoot: nil)
+                            workspace: workspace, temporaryRoot: nil, contentRoot: nil, pdfPages: [])
         }
         if values.isDirectory == true {
             let pages = try collect(url)
-            return Document(input: url, pages: pages, workspace: workspace, temporaryRoot: nil, contentRoot: url)
+            return Document(input: url, pages: pages, workspace: workspace, temporaryRoot: nil, contentRoot: url, pdfPages: [])
         }
         guard ["cbz", "zip"].contains(url.pathExtension.lowercased()) else {
             throw AppFailure("漫画支持 CBZ、ZIP 或图片文件夹。")
@@ -65,7 +90,7 @@ enum DocumentEngine {
             }
             _ = try run("/usr/bin/unzip", ["-qq", "-o", url.path, "-d", root.path])
             let pages = try collect(root)
-            return Document(input: url, pages: pages, workspace: workspace, temporaryRoot: root, contentRoot: root)
+            return Document(input: url, pages: pages, workspace: workspace, temporaryRoot: root, contentRoot: root, pdfPages: [])
         } catch {
             try? fm.removeItem(at: root)
             throw error
@@ -97,10 +122,16 @@ enum DocumentEngine {
         let content = root.appendingPathComponent("pages")
         try FileManager.default.createDirectory(at: content, withIntermediateDirectories: true)
         do {
-            let outputs = try await parallelMap(recognized, limit: ImageEngine.workers, progress: { count in
+            let limit = document.workspace == .pdf ? 2 : ImageEngine.workers
+            let outputs = try await parallelMap(recognized, limit: limit, progress: { count in
                 await progress(ProgressUpdate(fraction: 0.65 + Double(count) / Double(recognized.count) * 0.3,
                                               message: "绘制译文 · \(count) / \(recognized.count) 页"))
             }) { page in
+                if document.workspace == .pdf {
+                    let url = content.appendingPathComponent(String(format: "%05d.pdf", page.page.id + 1))
+                    try PDFEngine.renderPage(page, info: document.pdfPages[page.page.id], translations: translations, to: url)
+                    return url
+                }
                 // A numeric prefix guarantees natural reading order and avoids basename collisions.
                 let ext = page.blocks.isEmpty ? page.page.url.pathExtension : "png"
                 let name = String(format: "%05d", page.page.id + 1) + "-" + page.page.url.deletingPathExtension().lastPathComponent + "." + ext
@@ -111,6 +142,12 @@ enum DocumentEngine {
             try Task.checkCancellation()
             if document.workspace == .image {
                 return RenderedDocument(root: root, output: outputs[0], pages: outputs)
+            }
+            if document.workspace == .pdf {
+                await progress(ProgressUpdate(fraction: 0.96, message: "生成译文 PDF…"))
+                let pdfURL = root.appendingPathComponent("translated.pdf")
+                try await background { try PDFEngine.combine(original: document.input, translated: outputs, to: pdfURL) }
+                return RenderedDocument(root: root, output: pdfURL, pages: outputs)
             }
             // Keep standard comic metadata alongside the rewritten pages.
             if let inputRoot = document.contentRoot {
