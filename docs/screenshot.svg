@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7faf9"/>
+      <stop offset="1" stop-color="#eef3f1"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#18332c" flood-opacity=".12"/>
+    </filter>
+  </defs>
+  <rect width="1440" height="900" fill="#dce5e2"/>
+  <rect x="55" y="40" width="1330" height="820" rx="20" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="55" y="40" width="250" height="820" rx="20" fill="#edf3f1"/>
+  <rect x="285" y="40" width="1" height="820" fill="#d7e0dd"/>
+  <circle cx="85" cy="72" r="7" fill="#ff605c"/><circle cx="108" cy="72" r="7" fill="#ffbd44"/><circle cx="131" cy="72" r="7" fill="#00ca4e"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif">
+    <text x="83" y="138" font-size="27" font-weight="650" fill="#173c34">页译</text>
+    <text x="84" y="158" font-size="10" letter-spacing="2.5" fill="#78918a">PAGE TRANSLATE</text>
+    <text x="83" y="207" font-size="12" fill="#80948e">工作区</text>
+    <rect x="75" y="229" width="210" height="46" rx="9" fill="#dcebe6"/>
+    <text x="102" y="258" font-size="15" fill="#1f6957">▧</text><text x="127" y="258" font-size="15" font-weight="600" fill="#1f6957">图片翻译</text><circle cx="269" cy="252" r="3" fill="#2b806a"/>
+    <text x="102" y="304" font-size="15" fill="#43534f">▤</text><text x="127" y="304" font-size="15" fill="#43534f">漫画翻译</text>
+    <text x="102" y="350" font-size="15" fill="#43534f">▥</text><text x="127" y="350" font-size="15" fill="#43534f">论文 PDF</text>
+    <line x1="82" y1="751" x2="278" y2="751" stroke="#d0dcd8"/>
+    <text x="83" y="788" font-size="13" fill="#23725e">▣  在 Mac 上本地处理</text>
+    <text x="83" y="817" font-size="11" fill="#80948e">图片与文字无需上传</text>
+    <text x="83" y="837" font-size="11" fill="#80948e">首次使用需下载系统语言包</text>
+
+    <text x="335" y="108" font-size="27" font-weight="650" fill="#1b2926">图片翻译</text>
+    <text x="335" y="135" font-size="14" fill="#82918d">让图片里的文字，变成熟悉的语言。</text>
+    <rect x="1134" y="83" width="108" height="38" rx="8" fill="#e1ebe8"/><text x="1160" y="107" font-size="14" fill="#236b58">＋ 打开文件</text>
+    <rect x="1253" y="83" width="92" height="38" rx="8" fill="#2c806b"/><text x="1276" y="107" font-size="14" fill="white">导出</text>
+    <line x1="286" y1="168" x2="1365" y2="168" stroke="#d7e0dd"/>
+
+    <rect x="540" y="286" width="270" height="306" rx="26" fill="#e2eee9" transform="rotate(-7 675 439)"/>
+    <rect x="555" y="276" width="270" height="306" rx="22" fill="#ffffff" stroke="#e5ece9"/>
+    <text x="670" y="390" text-anchor="middle" font-size="52" fill="#2b806b">▧</text>
+    <text x="670" y="449" text-anchor="middle" font-size="24" fill="#61736d">A  →  译</text>
+    <text x="670" y="643" text-anchor="middle" font-size="24" font-weight="520" fill="#263530">拖入一张图片</text>
+    <text x="670" y="676" text-anchor="middle" font-size="15" fill="#82918d">识别、翻译、排版，在你的 Mac 上完成</text>
+    <rect x="613" y="706" width="114" height="40" rx="9" fill="#2c806b"/><text x="636" y="731" font-size="15" fill="white">▣  选择文件</text>
+    <text x="670" y="778" text-anchor="middle" font-size="12" fill="#a0ada9">PNG · JPEG · HEIC · WebP · 更多图片格式</text>
+
+    <line x1="286" y1="812" x2="1365" y2="812" stroke="#d7e0dd"/>
+    <text x="335" y="840" font-size="12" fill="#7d8e89">◉  本地翻译</text><text x="475" y="840" font-size="12" fill="#7d8e89">▧  原位排版</text><text x="616" y="840" font-size="12" fill="#7d8e89">▤  保留原文件</text>
+    <text x="1251" y="840" font-size="12" fill="#7d8e89">准备就绪</text>
+  </g>
+</svg>

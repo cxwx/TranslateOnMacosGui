@@ -6,6 +6,10 @@
 
 [功能介绍](#功能) · [开始使用](#开始使用) · [国区 AI 翻译计划](#apple-intelligence-与后续-ai-翻译) · [构建与测试](#构建与测试) · [已知限制](#已知限制)
 
+![页译界面预览](docs/screenshot.png)
+
+> 这是按当前界面布局制作的视觉预览，不是运行时截图。
+
 ## 功能
 
 - **图片翻译**：识别图片文字、使用系统翻译，并生成译图。
@@ -41,7 +45,9 @@ Apple 的 [highFidelity 策略文档](https://developer.apple.com/documentation/
 
 ### 下载应用
 
-如仓库提供了预编译版本，可从 GitHub Releases 下载 PageTranslate.app.zip，解压后将应用移入“应用程序”文件夹并打开。也可以从源码构建：
+如仓库提供了预编译版本，可从 GitHub Releases 下载仅支持 Apple Silicon（M 系列）的 PageTranslate.app.zip，解压后将应用移入“应用程序”文件夹并打开。也可以从源码构建：
+
+推送到 `main` 后，GitHub Actions 会在 macOS arm64 运行器上运行测试、构建应用，并提供 14 天有效的安装包构建产物。推送 `v*` 格式的版本标签（例如 `v0.1.0`）后，Actions 会按标签版本构建，并自动创建 GitHub Release，附上 `.app.zip` 和 SHA-256 校验文件。公开下载包使用临时签名，首次打开时 macOS 可能会显示安全确认；正式 Developer ID 签名与公证尚未配置。
 
 ### 从源码构建
 

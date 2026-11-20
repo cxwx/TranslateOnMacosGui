@@ -1,0 +1,76 @@
+name: Build and release macOS app
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and test (macOS arm64)
+    runs-on: macos-26
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+      - name: Run engine tests
+        run: bash Scripts/test.sh
+      - name: Build app
+        env:
+          APP_VERSION: ${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && github.ref_name || '' }}
+          APP_BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          if [[ "$APP_VERSION" == v* ]]; then APP_VERSION="${APP_VERSION#v}"; fi
+          if [[ -z "$APP_VERSION" ]]; then APP_VERSION="0.1.0"; fi
+          bash Scripts/build-app.sh
+
+      - name: Verify Apple Silicon binary
+        run: |
+          test "$(uname -m)" = arm64
+          file build/PageTranslate.app/Contents/MacOS/PageTranslate
+          codesign --verify --deep --strict --verbose=2 build/PageTranslate.app
+
+      - name: Package app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent build/PageTranslate.app build/PageTranslate.app.zip
+          shasum -a 256 build/PageTranslate.app.zip > build/PageTranslate.app.zip.sha256
+
+      - name: Upload app build artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: PageTranslate-${{ github.ref_name }}-macos-arm64
+          path: |
+            build/PageTranslate.app.zip
+            build/PageTranslate.app.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Release PageTranslate.app (macOS arm64)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - name: Download app build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PageTranslate-${{ github.ref_name }}-macos-arm64
+          path: build
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            build/PageTranslate.app.zip \
+            build/PageTranslate.app.zip.sha256 \
+            --verify-tag \
+            --title "Page Translate ${GITHUB_REF_NAME}" \
+            --generate-notes
