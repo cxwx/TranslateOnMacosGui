@@ -58,6 +58,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
       - name: Download app build artifact
         uses: actions/download-artifact@v4
         with:
@@ -71,6 +74,7 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             build/PageTranslate.app.zip \
             build/PageTranslate.app.zip.sha256 \
+            --repo "${GITHUB_REPOSITORY}" \
             --verify-tag \
             --title "Page Translate ${GITHUB_REF_NAME}" \
             --generate-notes
